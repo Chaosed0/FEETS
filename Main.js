@@ -44,7 +44,7 @@ Game.prototype.initIvanK = function() {
 
 	var self = this;
 	this.renderer.stage.addEventListener(Event.ENTER_FRAME, function() { self.onEF(); }, false);
-	this.renderer.stage.addEventListener(MouseEvent.MOUSE_DOWN, function() { self.onMouseDown(); }, false);
+	this.renderer.stage.addEventListener(MouseEvent.MOUSE_DOWN, function(e) { self.onMouseDown(e); }, false);
 	this.renderer.stage.addEventListener(KeyboardEvent.KEY_DOWN, function(e) { self.onKD(e); }, false);
 	this.renderer.stage.addEventListener(KeyboardEvent.KEY_UP, function(e) { self.onKU(e); }, false);
 }
@@ -152,9 +152,39 @@ Game.prototype.onKU = function(e) {
 
 Game.prototype.onMouseDown = function(e) {
     if(this.mousetime == null) {
-        this.mousetime = Util.getTimestamp();
-        this.mousepos = {x: this.renderer.stage.mouseX,
-            y: this.renderer.stage.mouseY};
+		var lfootPos = {x:this.lfoot.drawable.sprite.x, y:this.lfoot.drawable.sprite.y};
+		var rfootPos = {x:this.rfoot.drawable.sprite.x, y:this.rfoot.drawable.sprite.y};
+		var lfootRect = {left:lfootPos.x - this.lfoot.width/2.0,
+			right:lfootPos.x + this.lfoot.width/2.0,
+			top:lfootPos.y - this.lfoot.height/2.0,
+			bottom:lfootPos.y + this.lfoot.height/2.0};
+		var rfootRect = {left:rfootPos.x - this.rfoot.width/2.0,
+			right:rfootPos.x + this.rfoot.width/2.0,
+			top:rfootPos.y - this.rfoot.height/2.0,
+			bottom:rfootPos.y + this.rfoot.height/2.0};
+
+		if(this.renderer.stage.mouseX >= lfootRect.left &&
+				this.renderer.stage.mouseX <= lfootRect.right &&
+				this.renderer.stage.mouseY >= lfootRect.top &&
+				this.renderer.stage.mouseY <= lfootRect.bottom) {
+			this.curfoot = this.lfoot;
+			console.log("lfoot");
+		} else if(this.renderer.stage.mouseX >= rfootRect.left &&
+				this.renderer.stage.mouseX <= rfootRect.right &&
+				this.renderer.stage.mouseY >= rfootRect.top &&
+				this.renderer.stage.mouseY <= rfootRect.bottom) {
+			this.curfoot = this.rfoot;
+			console.log("rfoot");
+		} else {
+			this.curfoot = null;
+			console.log("none");
+		}
+		
+		if(this.curfoot != null) {
+			this.mousetime = Util.getTimestamp();
+			this.mousepos = {x: this.renderer.stage.mouseX,
+				y: this.renderer.stage.mouseY};
+		}
     }
 }
 
@@ -168,14 +198,16 @@ Game.prototype.onEF = function() {
                 (this.renderer.stage.stageHeight - 50) / Util.meterToPixel));
     this.floor.drawable.syncWithPhys(this.floor.body);
 
-    if(this.mousetime != null && Util.getTimestamp() - this.mousetime > 100 &&
+    if(this.mousetime != null && this.curfoot != null &&
+			Util.getTimestamp() - this.mousetime > 100 &&
             this.mousepos.y > this.renderer.stage.mouseY && 
             this.mousepos.x < this.renderer.stage.mouseX) {
         this.mousetime = null;
         var forceVec = new b2Vec2((this.renderer.stage.mouseX - this.mousepos.x) * 10,
                 (this.renderer.stage.mouseY - this.mousepos.y) * 10);
-        this.curfoot.body.ApplyForce(forceVec, this.curfoot.body.GetWorldCenter());
-        this.curfoot = (this.curfoot == this.lfoot? this.rfoot: this.lfoot);
+        this.curfoot.ApplyForce(forceVec, this.curfoot.body.GetWorldCenter());
+
+		console.log(forceVec.x + " " + forceVec.y);
     }
 
 	if (this.accumulator >= this.physStep*1000) {
@@ -196,7 +228,7 @@ Game.prototype.onEF = function() {
 		drawable.syncWithPhys(body);
 	}
 
-    this.renderer.view.x += 50 * delta/1000.0;
+    //this.renderer.view.x += 50 * delta/1000.0;
 	this.renderer.update();
 }
 

@@ -1,9 +1,20 @@
 
 function Foot(world, renderer, pos) {
-	var bitmap = new Bitmap(new BitmapData("img/FOOT.png"));
-	//INCREDIBLY ARBITRARY NUMBERS
-	bitmap.x = -64;
-	bitmap.y = -96;
+	//Some arbitrary numbers I figured out in gimp
+	const colWidth = 42.0 / Util.meterToPixel;
+	const colHeight = 16.0 / Util.meterToPixel;
+	const colOffset = new b2Vec2(10.0 / Util.meterToPixel, 80.0 / Util.meterToPixel);
+	this.width = 128;
+	this.height = 192;
+
+	var bitmapData = new BitmapData("img/FOOT.png");
+	var bitmap = new Bitmap(bitmapData);
+	/* ???
+	 * bitmap.x = -bitmapData.width/2.0;
+	 * bitmap.y = -bitmapData.height/2.0; */
+	bitmap.x = -this.width/2.0;
+	bitmap.y = -this.height/2.0;
+
 	var sprite = new Sprite();
 	sprite.addChild(bitmap);
 	this.drawable = new Drawable(sprite);
@@ -18,9 +29,7 @@ function Foot(world, renderer, pos) {
 	this.body = world.CreateBody(bodyDef);
 
 	var shape = new b2PolygonShape();
-	//INCREDIBLY ARBITRARY NUMBERS
-	shape.SetAsOrientedBox(42.0 / Util.meterToPixel, 16.0 / Util.meterToPixel,
-			new b2Vec2(10.0 / Util.meterToPixel, 80.0 / Util.meterToPixel), 0.0);
+	shape.SetAsOrientedBox(colWidth, colHeight, colOffset, 0.0);
     var fixtureDef = new b2FixtureDef();
     fixtureDef.shape = shape;
     fixtureDef.density = 1.0;
@@ -32,4 +41,14 @@ function Foot(world, renderer, pos) {
 
 Foot.prototype.update = function() {
 	this.drawable.syncWithPhys(this.body);
+}
+
+Foot.prototype.ApplyForce = function(forceVec, pos) {
+	const minForceX = 600.0;
+	const minForceY = -600.0;
+
+	forceVec.x = Math.max(minForceX, forceVec.x);
+	forceVec.y = Math.min(minForceY, forceVec.y);
+
+	this.body.ApplyForce(forceVec, pos);
 }
