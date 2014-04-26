@@ -4,6 +4,8 @@ function Drawable(sprite) {
     this.y = 0;
     this.angle = 0;
     this.sprite = sprite;
+
+	this.id = null;
 }
 
 Drawable.prototype.syncWithPhys = function(body) {

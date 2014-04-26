@@ -9,6 +9,10 @@ Util.sign = function(number) {
 	return (number?number<0?-1:1:0); 
 }
 
+Util.random = function(from, to) {
+	return Math.random() * (to - from) + from;
+}
+
 if (window.performance.now) {
 	console.log("Using high performance timer");
 	Util.getTimestamp = function() { return window.performance.now(); };
