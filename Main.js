@@ -168,16 +168,13 @@ Game.prototype.onMouseDown = function(e) {
 				this.renderer.stage.mouseY >= lfootRect.top &&
 				this.renderer.stage.mouseY <= lfootRect.bottom) {
 			this.curfoot = this.lfoot;
-			console.log("lfoot");
 		} else if(this.renderer.stage.mouseX >= rfootRect.left &&
 				this.renderer.stage.mouseX <= rfootRect.right &&
 				this.renderer.stage.mouseY >= rfootRect.top &&
 				this.renderer.stage.mouseY <= rfootRect.bottom) {
 			this.curfoot = this.rfoot;
-			console.log("rfoot");
 		} else {
 			this.curfoot = null;
-			console.log("none");
 		}
 		
 		if(this.curfoot != null) {
