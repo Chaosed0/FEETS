@@ -12,8 +12,11 @@ b2FrictionJointDef  = Box2D.Dynamics.Joints.b2FrictionJointDef,
 b2PolygonShape      = Box2D.Collision.Shapes.b2PolygonShape,
 b2CircleShape       = Box2D.Collision.Shapes.b2CircleShape;
 b2DebugDraw 		= Box2D.Dynamics.b2DebugDraw;
+b2ContactListener	= Box2D.Dynamics.b2ContactListener;
 
 function Game() {
+	var self = this;
+
 	this.world = null;
 	this.renderer = null;
 	this.lfoot = null;
@@ -33,10 +36,49 @@ function Game() {
     this.mousepos = null;
 
 	this.scrollPixelsPerSecond = 50.0;
+
+	this.contactListener = new b2ContactListener();
+
+	this.contactListener.BeginContact = function(contact) {
+		var fixtureA = contact.GetFixtureA();
+		var fixtureB = contact.GetFixtureB();
+		var bodyA = fixtureA.GetBody();
+		var bodyB = fixtureB.GetBody();
+
+		if(bodyA == self.lfoot.body || bodyB == self.lfoot.body &&
+				(bodyA == self.floor.body || bodyB == self.floor.body)) {
+			self.lfoot.onground = true;
+			console.log("lfoot onground");
+		}
+		if(bodyA == self.rfoot.body || bodyB == self.rfoot.body &&
+				(bodyA == self.floor.body || bodyB == self.floor.body)) {
+			self.rfoot.onground = true;
+			console.log("rfoot onground");
+		}
+	}
+
+	this.contactListener.EndContact = function(contact) {
+		var fixtureA = contact.GetFixtureA();
+		var fixtureB = contact.GetFixtureB();
+		var bodyA = fixtureA.GetBody();
+		var bodyB = fixtureB.GetBody();
+
+		if(bodyA == self.lfoot.body || bodyB == self.lfoot.body &&
+				(bodyA == self.floor.body || bodyB == self.floor.body)) {
+			self.lfoot.onground = false;
+			console.log("lfoot offground");
+		}
+		if(bodyA == self.rfoot.body || bodyB == self.rfoot.body &&
+				(bodyA == self.floor.body || bodyB == self.floor.body)) {
+			self.rfoot.onground = false;
+			console.log("rfoot offground");
+		}
+	}
 }
 
 Game.prototype.Run = function() {
 	this.world = new b2World(new b2Vec2(0,9.8), false);
+	this.world.SetContactListener(this.contactListener);
 	this.initIvanK();
 	//this.initDebugDraw();
 	this.initWorld();
@@ -213,6 +255,7 @@ Game.prototype.onEF = function() {
     this.floor.drawable.syncWithPhys(this.floor.body);
 
     if(this.mousetime != null && this.curfoot != null &&
+			this.curfoot.onground &&
 			Util.getTimestamp() - this.mousetime > 100) {
             /*this.mousepos.y > this.renderer.stage.mouseY && 
             this.mousepos.x < this.renderer.stage.mouseX) {*/
