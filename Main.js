@@ -19,6 +19,7 @@ function Game() {
 	this.lfoot = null;
 	this.rfoot = null;
     this.curfoot = null;
+	this.lastfoot = null;
 	this.actors = [];
 	this.bodies = [];
 
@@ -30,6 +31,8 @@ function Game() {
 
     this.mousetime = null;
     this.mousepos = null;
+
+	this.scrollPixelsPerSecond = 50.0;
 }
 
 Game.prototype.Run = function() {
@@ -136,8 +139,8 @@ Game.prototype.initWorld = function() {
 	this.floor.drawable.syncWithPhys(this.floor.body);
 	this.renderer.add(this.floor.drawable);
 
-	this.lfoot = new Foot(this.world, this.renderer, {x:100/Util.meterToPixel, y:500/Util.meterToPixel});
-	this.rfoot = new Foot(this.world, this.renderer, {x:120/Util.meterToPixel, y:500/Util.meterToPixel});
+	this.lfoot = new Foot(this.world, this.renderer, {x:400/Util.meterToPixel, y:500/Util.meterToPixel});
+	this.rfoot = new Foot(this.world, this.renderer, {x:420/Util.meterToPixel, y:500/Util.meterToPixel});
     this.curfoot = this.lfoot;
 
 	//this.renderer.followActor = this.foot.drawable;
@@ -163,15 +166,28 @@ Game.prototype.onMouseDown = function(e) {
 			top:rfootPos.y - this.rfoot.height/2.0,
 			bottom:rfootPos.y + this.rfoot.height/2.0};
 
+		var clickleft = false;
+		var clickright = false;
+
 		if(this.renderer.stage.mouseX >= lfootRect.left &&
 				this.renderer.stage.mouseX <= lfootRect.right &&
 				this.renderer.stage.mouseY >= lfootRect.top &&
 				this.renderer.stage.mouseY <= lfootRect.bottom) {
-			this.curfoot = this.lfoot;
+					clickleft = true;
 		} else if(this.renderer.stage.mouseX >= rfootRect.left &&
 				this.renderer.stage.mouseX <= rfootRect.right &&
 				this.renderer.stage.mouseY >= rfootRect.top &&
 				this.renderer.stage.mouseY <= rfootRect.bottom) {
+					clickright = true;
+		}
+
+		//If they're both clicked, prefer the one that was not clicked last
+		// Need this.lastfoot in case this.curfoot is set to null here
+		if(clickleft && clickright) {
+			this.curfoot = (this.lastfoot == this.lfoot ? this.rfoot: this.lfoot);
+		} else if(clickleft) {
+			this.curfoot = this.lfoot;
+		} else if(clickright) {
 			this.curfoot = this.rfoot;
 		} else {
 			this.curfoot = null;
@@ -181,6 +197,7 @@ Game.prototype.onMouseDown = function(e) {
 			this.mousetime = Util.getTimestamp();
 			this.mousepos = {x: this.renderer.stage.mouseX,
 				y: this.renderer.stage.mouseY};
+			this.lastfoot = this.curfoot;
 		}
     }
 }
@@ -196,9 +213,9 @@ Game.prototype.onEF = function() {
     this.floor.drawable.syncWithPhys(this.floor.body);
 
     if(this.mousetime != null && this.curfoot != null &&
-			Util.getTimestamp() - this.mousetime > 100 &&
-            this.mousepos.y > this.renderer.stage.mouseY && 
-            this.mousepos.x < this.renderer.stage.mouseX) {
+			Util.getTimestamp() - this.mousetime > 100) {
+            /*this.mousepos.y > this.renderer.stage.mouseY && 
+            this.mousepos.x < this.renderer.stage.mouseX) {*/
         this.mousetime = null;
         var forceVec = new b2Vec2((this.renderer.stage.mouseX - this.mousepos.x) * 10,
                 (this.renderer.stage.mouseY - this.mousepos.y) * 10);
@@ -207,7 +224,7 @@ Game.prototype.onEF = function() {
 		console.log(forceVec.x + " " + forceVec.y);
     }
 
-	if (this.accumulator >= this.physStep*1000) {
+	while (this.accumulator >= this.physStep*1000) {
 		//console.log(curtime + " " + this.time + " " + delta + " " + this.accumulator + " " + this.physStep*1000);
 		this.world.Step(this.physStep, 3, 3);
 		this.accumulator -= this.physStep*1000;
@@ -225,7 +242,7 @@ Game.prototype.onEF = function() {
 		drawable.syncWithPhys(body);
 	}
 
-    //this.renderer.view.x += 50 * delta/1000.0;
+    this.renderer.view.x += this.scrollPixelsPerSecond * delta/1000.0;
 	this.renderer.update();
 }
 
