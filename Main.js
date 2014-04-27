@@ -157,8 +157,8 @@ function Game() {
 		floor.drawable.syncWithPhys(floor.body);
 		renderer.add(floor.drawable);
 
-		lfoot = new Foot(world, renderer, {x:400/Util.meterToPixel, y:500/Util.meterToPixel});
-		rfoot = new Foot(world, renderer, {x:420/Util.meterToPixel, y:500/Util.meterToPixel});
+		lfoot = new Foot(world, renderer, {x:400/Util.meterToPixel, y:-100/Util.meterToPixel});
+		rfoot = new Foot(world, renderer, {x:420/Util.meterToPixel, y:-100/Util.meterToPixel});
 		curfoot = lfoot;
 		lastfoot = rfoot;
 
@@ -266,7 +266,6 @@ function Game() {
 
 			var distance = foot.Distance(renderer.stage.stageHeight - fHeight);
 			var scale = distance / entity.height;
-			console.log(scale);
 			if(distance < 1) {
 				var squashid = i;
 				setTimeout(function() {
@@ -325,17 +324,10 @@ function Game() {
 		var bodyA = fixtureA.GetBody();
 		var bodyB = fixtureB.GetBody();
 
-		if((bodyA == lfoot.body || bodyB == lfoot.body) &&
-				(bodyA == floor.body || bodyB == floor.body)) {
-			//lfoot-ground collision
-			lfoot.onground = true;
-		} else if((bodyA == rfoot.body || bodyB == rfoot.body) &&
-				(bodyA == floor.body || bodyB == floor.body)) {
-			//rfoot-ground collision
-			rfoot.onground = true;
-		} else if(bodyA == lfoot.body || bodyB == lfoot.body ||
-				bodyA == rfoot.body || bodyB == rfoot.body) {
-			//foot-something-else collision
+		if((bodyA == lfoot.body || bodyB == lfoot.body ||
+				bodyA == rfoot.body || bodyB == rfoot.body) &&
+				(bodyA != floor.body && bodyB != floor.body)) {
+			//foot colliding with something that isn't the floor
 			var footBody = null;
 			var otherBody = null;
 			if(bodyA == lfoot.body || bodyA == rfoot.body) {
@@ -362,18 +354,5 @@ function Game() {
 	}
 
 	contactListener.EndContact = function(contact) {
-		var fixtureA = contact.GetFixtureA();
-		var fixtureB = contact.GetFixtureB();
-		var bodyA = fixtureA.GetBody();
-		var bodyB = fixtureB.GetBody();
-
-		if(bodyA == lfoot.body || bodyB == lfoot.body &&
-				(bodyA == floor.body || bodyB == floor.body)) {
-			lfoot.onground = false;
-		}
-		if(bodyA == rfoot.body || bodyB == rfoot.body &&
-				(bodyA == floor.body || bodyB == floor.body)) {
-			rfoot.onground = false;
-		}
 	}
 }
