@@ -286,7 +286,14 @@ function Game() {
 			drawable.syncWithPhys(body);
 		}
 
-		renderer.view.x += scrollPixelsPerSecond * delta/1000.0;
+		//If one of the feet is past 3/4 of the screen, move the camera to it
+		if(lfoot.drawable.x >= renderer.view.x + renderer.stage.stageWidth / 4.0) {
+			renderer.view.x = lfoot.drawable.x - renderer.stage.stageWidth / 4.0;
+		} else if(rfoot.drawable.x >= renderer.view.x + renderer.stage.stageWidth / 4.0) {
+			renderer.view.x = rfoot.drawable.x - renderer.stage.stageWidth / 4.0;
+		} else {
+			renderer.view.x += scrollPixelsPerSecond * delta/1000.0;
+		}
 		renderer.update();
 	}
 
