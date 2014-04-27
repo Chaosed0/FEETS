@@ -15,355 +15,356 @@ b2DebugDraw 		= Box2D.Dynamics.b2DebugDraw;
 b2ContactListener	= Box2D.Dynamics.b2ContactListener;
 
 function Game() {
-	this.world = null;
-	this.renderer = null;
-	this.lfoot = null;
-	this.rfoot = null;
-    this.curfoot = null;
-	this.lastfoot = null;
-	this.entities = {};
-	this.nextEntityId = 0;
-	this.squashList = [];
+	var world = null;
+	var renderer = null;
 
-	this.randomBoxMin = 1000;
-	this.randomBoxMax = 5000;
-	this.nextRandomBox = Util.random(this.randomBoxMin, this.randomBoxMax);
-	this.lastRandomBox = Util.getTimestamp();
+	var lfoot = null;
+	var rfoot = null;
+    var curfoot = null;
+	var lastfoot = null;
+	var entities = {};
+	var nextEntityId = 0;
+	var squashList = [];
 
-	this.time = Util.getTimestamp();
-	this.accumulator = 0;
+	var fWidth = null;
+	var fHeight = null;
 
-	this.physStep = 1/40.0;
-	this.floor = {};
+	const randomBoxMin = 1000;
+	const randomBoxMax = 5000;
+	const scrollPixelsPerSecond = 50.0;
+	var nextRandomBox = Util.random(randomBoxMin, randomBoxMax);
+	var lastRandomBox = Util.getTimestamp();
 
-    this.mousetime = null;
-    this.mousepos = null;
+	var time = Util.getTimestamp();
+	var accumulator = 0;
 
-	this.scrollPixelsPerSecond = 50.0;
+	var physStep = 1/40.0;
+	var floor = {};
 
-	this.contactListener = new b2ContactListener();
-}
+    var mousetime = null;
+    var mousepos = null;
 
-Game.prototype.Run = function() {
-	this.world = new b2World(new b2Vec2(0,9.8), false);
-	this.world.SetContactListener(this.contactListener);
-	this.initIvanK();
-	//this.initDebugDraw();
-	this.initWorld();
-}
+	var contactListener = new b2ContactListener();
 
-Game.prototype.initIvanK = function() {
-	this.renderer = new Renderer("c");
+	this.Run = function() {
+		world = new b2World(new b2Vec2(0,9.8), false);
+		world.SetContactListener(contactListener);
 
-	var self = this;
-	this.renderer.stage.addEventListener(Event.ENTER_FRAME, function() { self.onEF(); }, false);
-	this.renderer.stage.addEventListener(MouseEvent.MOUSE_DOWN, function(e) { self.onMouseDown(e); }, false);
-	this.renderer.stage.addEventListener(KeyboardEvent.KEY_DOWN, function(e) { self.onKD(e); }, false);
-	this.renderer.stage.addEventListener(KeyboardEvent.KEY_UP, function(e) { self.onKU(e); }, false);
-}
-
-Game.prototype.initDebugDraw = function() {
-	stage = null;
-
-	var canvas = document.getElementById("c");
-	var debugDraw = new b2DebugDraw();
-	debugDraw.SetSprite(document.getElementById("c").getContext("2d"));
-	debugDraw.SetDrawScale(Util.meterToPixel);
-	debugDraw.SetFillAlpha(0.3);
-	debugDraw.SetLineThickness(1.0);
-	debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit);
-	this.world.SetDebugDraw(debugDraw);
-	
-	var self = this;
-	window.addEventListener('keydown', function(event) { self.onKD(event); }, false);
-	window.addEventListener('keyup', function(event) { self.onKU(event); }, false);
-	setInterval(function() { self.onEF() }, 1000.0/60.0);
-}
-
-Game.prototype.randomBox = function(left, bottom) {
-	var body = null;
-	var sprite = null;
-	var width = Math.random() * 4.0;
-	var height = width;
-
-	var bodyDef = new b2BodyDef();
-	bodyDef.type = b2Body.b2_dynamicBody;
-	bodyDef.position.Set(left / Util.meterToPixel + width,
-			bottom / Util.meterToPixel - height);
-	body = this.world.CreateBody(bodyDef);
-
-	var shape = new b2PolygonShape();
-	shape.SetAsBox(width / 2.0, height / 2.0);
-    var fixtureDef = new b2FixtureDef();
-    fixtureDef.shape = shape;
-    fixtureDef.density = 1.0;
-    fixtureDef.filter.categoryBits = 0x0002;
-    fixtureDef.filter.maskBits = 0xFFFF^0x0002;
-	body.CreateFixture(fixtureDef);
-
-    fixtureDef = new b2FixtureDef();
-    fixtureDef.shape = shape;
-    fixtureDef.density = 1.0;
-	fixtureDef.isSensor = true;
-	body.CreateFixture(fixtureDef);
-
-	var dWidth = width * Util.meterToPixel;
-	var dHeight = height * Util.meterToPixel;
-	var color = Math.random() * 0xFFFFFF;
-	sprite = new Sprite();
-	sprite.graphics.beginFill(color, 0.5);
-	sprite.graphics.drawRect(-dWidth/2.0, -dHeight/2.0, dWidth, dHeight);
-	sprite.graphics.endFill();
-
-	var drawable = new Drawable(sprite);
-	this.renderer.add(drawable);
-
-	var entity = {drawable:drawable,
-		body:body,
-		width:dWidth,
-		height:dHeight};
-	entity.body.SetUserData(entity);
-	this.entities[this.nextEntityId] = entity;
-	entity.id = this.nextEntityId++;;
-}
-
-Game.prototype.initWorld = function() {
-
-	this.fWidth = this.renderer.stage.stageWidth * 1.5;
-	this.fHeight = 100;
-	var fX = this.renderer.stage.stageWidth - this.fWidth / 2.0;
-	var fY = this.renderer.stage.stageHeight - this.fHeight / 2.0;
-
-	var floorDef = new b2BodyDef();
-	floorDef.position.Set(fX / Util.meterToPixel, fY / Util.meterToPixel);
-	this.floor.body = this.world.CreateBody(floorDef);
-
-	var shape = new b2PolygonShape();
-	shape.SetAsBox(this.fWidth / 2.0 / Util.meterToPixel, this.fHeight / 2.0 / Util.meterToPixel);
-    var fixtureDef = new b2FixtureDef();
-    fixtureDef.shape = shape;
-    fixtureDef.friction = 0.8;
-    fixtureDef.density = 1.0;
-	this.floor.body.CreateFixture(fixtureDef);
-
-	var floorSprite = new Sprite();
-	floorSprite.graphics.beginFill(0x77DD77);
-	floorSprite.graphics.drawRect(-this.fWidth / 2.0, -this.fHeight / 2.0, this.fWidth, this.fHeight);
-	floorSprite.graphics.endFill();
-
-	this.floor.drawable = new Drawable(floorSprite);
-	this.floor.drawable.syncWithPhys(this.floor.body);
-	this.renderer.add(this.floor.drawable);
-
-	this.lfoot = new Foot(this.world, this.renderer, {x:400/Util.meterToPixel, y:500/Util.meterToPixel});
-	this.rfoot = new Foot(this.world, this.renderer, {x:420/Util.meterToPixel, y:500/Util.meterToPixel});
-    this.curfoot = this.lfoot;
-	this.lastfoot = this.rfoot;
-
-	//this.renderer.followActor = this.foot.drawable;
-	//this.renderer.followAngle = true;
-}
-
-Game.prototype.onKD = function(e) {
-}
-
-Game.prototype.onKU = function(e) {
-}
-
-Game.prototype.onMouseDown = function(e) {
-	var lfootPos = {x:this.lfoot.drawable.sprite.x, y:this.lfoot.drawable.sprite.y};
-	var rfootPos = {x:this.rfoot.drawable.sprite.x, y:this.rfoot.drawable.sprite.y};
-	var lfootRect = {left:lfootPos.x - this.lfoot.width/2.0,
-		right:lfootPos.x + this.lfoot.width/2.0,
-		top:lfootPos.y - this.lfoot.height/2.0,
-		bottom:lfootPos.y + this.lfoot.height/2.0};
-	var rfootRect = {left:rfootPos.x - this.rfoot.width/2.0,
-		right:rfootPos.x + this.rfoot.width/2.0,
-		top:rfootPos.y - this.rfoot.height/2.0,
-		bottom:rfootPos.y + this.rfoot.height/2.0};
-
-	var clickleft = false;
-	var clickright = false;
-
-	if(this.renderer.stage.mouseX >= lfootRect.left &&
-			this.renderer.stage.mouseX <= lfootRect.right &&
-			this.renderer.stage.mouseY >= lfootRect.top &&
-			this.renderer.stage.mouseY <= lfootRect.bottom) {
-				clickleft = true;
-	}
-	if(this.renderer.stage.mouseX >= rfootRect.left &&
-			this.renderer.stage.mouseX <= rfootRect.right &&
-			this.renderer.stage.mouseY >= rfootRect.top &&
-			this.renderer.stage.mouseY <= rfootRect.bottom) {
-				clickright = true;
+		initIvanK();
+		//initDebugDraw();
+		initWorld();
 	}
 
-	//If they're both clicked, prefer the one that was not clicked last
-	// Need this.lastfoot in case this.curfoot is set to null here
-	if(clickleft && clickright) {
-		this.curfoot = (this.lastfoot == this.lfoot ? this.rfoot: this.lfoot);
-	} else if(clickleft) {
-		this.curfoot = this.lfoot;
-	} else if(clickright) {
-		this.curfoot = this.rfoot;
-	} else {
-		this.curfoot = null;
-	}
-	
-	if(this.curfoot != null) {
-		this.mousetime = Util.getTimestamp();
-		this.mousepos = {x: this.renderer.stage.mouseX,
-			y: this.renderer.stage.mouseY};
-		this.lastfoot = this.curfoot;
-	}
-}
+	var initIvanK = function() {
+		renderer = new Renderer("c");
 
-Game.prototype.updateFloor = function() {
-	this.floor.body.SetPosition(new b2Vec2(this.renderer.view.x / Util.meterToPixel,
-                (this.renderer.stage.stageHeight - this.fHeight/2.0) / Util.meterToPixel));
-    this.floor.drawable.syncWithPhys(this.floor.body);
-}
-
-Game.prototype.stepPhysics = function(delta) {
-	this.accumulator += delta;
-
-    if(this.mousetime != null && this.curfoot != null &&
-			Util.getTimestamp() - this.mousetime > 100 &&
-			this.curfoot.Distance(this.renderer.stage.stageHeight - this.fHeight) < 0.5) {
-		var mousedelta = Util.getTimestamp() - this.mousetime;
-        var forceVec = new b2Vec2(
-				(this.renderer.stage.mouseX - this.mousepos.x)/mousedelta * 1000
-					* this.curfoot.scale * this.curfoot.scale,
-                (this.renderer.stage.mouseY - this.mousepos.y)/mousedelta * 1000
-					* this.curfoot.scale * this.curfoot.scale);
-        this.curfoot.ApplyForce(forceVec, this.curfoot.body.GetWorldCenter());
-
-        this.mousetime = null;
-		this.curfoot = null;
-    }
-
-	if (this.accumulator >= this.physStep*1000) {
-		this.world.Step(this.physStep, 3, 3);
-		this.accumulator -= this.physStep*1000;
+		renderer.stage.addEventListener(Event.ENTER_FRAME, function() { onEF(); }, false);
+		renderer.stage.addEventListener(MouseEvent.MOUSE_DOWN, function(e) { onMouseDown(e); }, false);
+		renderer.stage.addEventListener(KeyboardEvent.KEY_DOWN, function(e) { onKD(e); }, false);
+		renderer.stage.addEventListener(KeyboardEvent.KEY_UP, function(e) { onKU(e); }, false);
 	}
 
-	this.world.ClearForces();
-}
+	var initDebugDraw = function() {
+		stage = null;
 
-Game.prototype.update = function(delta) {
-	this.lfoot.update();
-	this.rfoot.update();
+		var canvas = document.getElementById("c");
+		var debugDraw = new b2DebugDraw();
+		debugDraw.SetSprite(document.getElementById("c").getContext("2d"));
+		debugDraw.SetDrawScale(Util.meterToPixel);
+		debugDraw.SetFillAlpha(0.3);
+		debugDraw.SetLineThickness(1.0);
+		debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit);
+		world.SetDebugDraw(debugDraw);
+		
+		window.addEventListener('keydown', function(event) { onKD(event); }, false);
+		window.addEventListener('keyup', function(event) { onKU(event); }, false);
+		setInterval(function() { onEF() }, 1000.0/60.0);
+	}
 
-	//Iterate in reverse to avoid problems when removing elements
-	for(var i = this.squashList.length-1; i >= 0; --i) {
-		var squashEntity = this.squashList[i];
-		var entity = squashEntity.entity;
-		var foot = squashEntity.foot;
-		this.world.DestroyBody(entity.body);
-		delete this.entities[entity.id];
+	var randomBox = function(left, bottom) {
+		var body = null;
+		var sprite = null;
+		var width = Math.random() * 4.0;
+		var height = width;
 
-		var distance = foot.Distance(this.renderer.stage.stageHeight - this.fHeight);
-		var scale = distance / entity.height;
-		console.log(scale);
-		if(distance < 1) {
-			var self = this;
-			var squashid = i;
-			setTimeout(function() {
-				self.renderer.remove(entity.drawable);
-			}, 2000);
-			self.squashList.splice(squashid, 1);
+		var bodyDef = new b2BodyDef();
+		bodyDef.type = b2Body.b2_dynamicBody;
+		bodyDef.position.Set(left / Util.meterToPixel + width,
+				bottom / Util.meterToPixel - height);
+		body = world.CreateBody(bodyDef);
+
+		var shape = new b2PolygonShape();
+		shape.SetAsBox(width / 2.0, height / 2.0);
+		var fixtureDef = new b2FixtureDef();
+		fixtureDef.shape = shape;
+		fixtureDef.density = 1.0;
+		fixtureDef.filter.categoryBits = 0x0002;
+		fixtureDef.filter.maskBits = 0xFFFF^0x0002;
+		body.CreateFixture(fixtureDef);
+
+		fixtureDef = new b2FixtureDef();
+		fixtureDef.shape = shape;
+		fixtureDef.density = 1.0;
+		fixtureDef.isSensor = true;
+		body.CreateFixture(fixtureDef);
+
+		var dWidth = width * Util.meterToPixel;
+		var dHeight = height * Util.meterToPixel;
+		var color = Math.random() * 0xFFFFFF;
+		sprite = new Sprite();
+		sprite.graphics.beginFill(color, 0.5);
+		sprite.graphics.drawRect(-dWidth/2.0, -dHeight/2.0, dWidth, dHeight);
+		sprite.graphics.endFill();
+
+		var drawable = new Drawable(sprite);
+		renderer.add(drawable);
+
+		var entity = {drawable:drawable,
+			body:body,
+			width:dWidth,
+			height:dHeight};
+		entity.body.SetUserData(entity);
+		entities[nextEntityId] = entity;
+		entity.id = nextEntityId++;;
+	}
+
+	var initWorld = function() {
+
+		fWidth = renderer.stage.stageWidth * 1.5;
+		fHeight = 100;
+		var fX = renderer.stage.stageWidth - fWidth / 2.0;
+		var fY = renderer.stage.stageHeight - fHeight / 2.0;
+
+		var floorDef = new b2BodyDef();
+		floorDef.position.Set(fX / Util.meterToPixel, fY / Util.meterToPixel);
+		floor.body = world.CreateBody(floorDef);
+
+		var shape = new b2PolygonShape();
+		shape.SetAsBox(fWidth / 2.0 / Util.meterToPixel, fHeight / 2.0 / Util.meterToPixel);
+		var fixtureDef = new b2FixtureDef();
+		fixtureDef.shape = shape;
+		fixtureDef.friction = 0.8;
+		fixtureDef.density = 1.0;
+		floor.body.CreateFixture(fixtureDef);
+
+		var floorSprite = new Sprite();
+		floorSprite.graphics.beginFill(0x77DD77);
+		floorSprite.graphics.drawRect(-fWidth / 2.0, -fHeight / 2.0, fWidth, fHeight);
+		floorSprite.graphics.endFill();
+
+		floor.drawable = new Drawable(floorSprite);
+		floor.drawable.syncWithPhys(floor.body);
+		renderer.add(floor.drawable);
+
+		lfoot = new Foot(world, renderer, {x:400/Util.meterToPixel, y:500/Util.meterToPixel});
+		rfoot = new Foot(world, renderer, {x:420/Util.meterToPixel, y:500/Util.meterToPixel});
+		curfoot = lfoot;
+		lastfoot = rfoot;
+
+		//renderer.followActor = foot.drawable;
+		//renderer.followAngle = true;
+	}
+
+	var onKD = function(e) {
+	}
+
+	var onKU = function(e) {
+	}
+
+	var onMouseDown = function(e) {
+		var lfootPos = {x:lfoot.drawable.sprite.x, y:lfoot.drawable.sprite.y};
+		var rfootPos = {x:rfoot.drawable.sprite.x, y:rfoot.drawable.sprite.y};
+		var lfootRect = {left:lfootPos.x - lfoot.width/2.0,
+			right:lfootPos.x + lfoot.width/2.0,
+			top:lfootPos.y - lfoot.height/2.0,
+			bottom:lfootPos.y + lfoot.height/2.0};
+		var rfootRect = {left:rfootPos.x - rfoot.width/2.0,
+			right:rfootPos.x + rfoot.width/2.0,
+			top:rfootPos.y - rfoot.height/2.0,
+			bottom:rfootPos.y + rfoot.height/2.0};
+
+		var clickleft = false;
+		var clickright = false;
+
+		if(renderer.stage.mouseX >= lfootRect.left &&
+				renderer.stage.mouseX <= lfootRect.right &&
+				renderer.stage.mouseY >= lfootRect.top &&
+				renderer.stage.mouseY <= lfootRect.bottom) {
+					clickleft = true;
+		}
+		if(renderer.stage.mouseX >= rfootRect.left &&
+				renderer.stage.mouseX <= rfootRect.right &&
+				renderer.stage.mouseY >= rfootRect.top &&
+				renderer.stage.mouseY <= rfootRect.bottom) {
+					clickright = true;
+		}
+
+		//If they're both clicked, prefer the one that was not clicked last
+		// Need lastfoot in case curfoot is set to null here
+		if(clickleft && clickright) {
+			curfoot = (lastfoot == lfoot ? rfoot: lfoot);
+		} else if(clickleft) {
+			curfoot = lfoot;
+		} else if(clickright) {
+			curfoot = rfoot;
 		} else {
-			entity.drawable.y = this.renderer.stage.stageHeight - this.fHeight - entity.height * scale / 2.0;
-			entity.drawable.sprite.scaleY = scale;
+			curfoot = null;
+		}
+		
+		if(curfoot != null) {
+			mousetime = Util.getTimestamp();
+			mousepos = {x: renderer.stage.mouseX,
+				y: renderer.stage.mouseY};
+			lastfoot = curfoot;
 		}
 	}
 
-	for(var i in this.entities) {
-		var drawable = this.entities[i].drawable;
-		var body = this.entities[i].body;
-
-		drawable.syncWithPhys(body);
+	var updateFloor = function() {
+		floor.body.SetPosition(new b2Vec2(renderer.view.x / Util.meterToPixel,
+					(renderer.stage.stageHeight - fHeight/2.0) / Util.meterToPixel));
+		floor.drawable.syncWithPhys(floor.body);
 	}
 
-    this.renderer.view.x += this.scrollPixelsPerSecond * delta/1000.0;
-	this.renderer.update();
-}
+	var stepPhysics = function(delta) {
+		accumulator += delta;
 
-Game.prototype.onEF = function() {
-	var curtime = Util.getTimestamp();
-	var delta = curtime - this.time;
-	this.time = curtime;
+		if(mousetime != null && curfoot != null &&
+				Util.getTimestamp() - mousetime > 100 &&
+				curfoot.Distance(renderer.stage.stageHeight - fHeight) < 0.5) {
+			var mousedelta = Util.getTimestamp() - mousetime;
+			var forceVec = new b2Vec2(
+					(renderer.stage.mouseX - mousepos.x)/mousedelta * 1000
+						* curfoot.scale * curfoot.scale,
+					(renderer.stage.mouseY - mousepos.y)/mousedelta * 1000
+						* curfoot.scale * curfoot.scale);
+			curfoot.ApplyForce(forceVec, curfoot.body.GetWorldCenter());
 
-	if(curtime - this.lastRandomBox >= this.nextRandomBox) {
-		this.lastRandomBox = curtime;
-		this.nextRandomBox = Util.random(this.randomBoxMin, this.randomBoxMax);
-		this.randomBox(this.renderer.view.x + this.renderer.stage.stageWidth / 2.0,
-				this.renderer.stage.stageHeight - this.fHeight);
-	}
-
-	this.stepPhysics(delta);
-	this.update(delta);
-	this.updateFloor();
-	//this.world.DrawDebugData();
-	
-}
-
-game = new Game();
-
-game.contactListener.BeginContact = function(contact) {
-	var fixtureA = contact.GetFixtureA();
-	var fixtureB = contact.GetFixtureB();
-	var bodyA = fixtureA.GetBody();
-	var bodyB = fixtureB.GetBody();
-
-	if((bodyA == game.lfoot.body || bodyB == game.lfoot.body) &&
-			(bodyA == game.floor.body || bodyB == game.floor.body)) {
-		//lfoot-ground collision
-		game.lfoot.onground = true;
-	} else if((bodyA == game.rfoot.body || bodyB == game.rfoot.body) &&
-			(bodyA == game.floor.body || bodyB == game.floor.body)) {
-		//rfoot-ground collision
-		game.rfoot.onground = true;
-	} else if(bodyA == game.lfoot.body || bodyB == game.lfoot.body ||
-			bodyA == game.rfoot.body || bodyB == game.rfoot.body) {
-		//foot-something-else collision
-		var footBody = null;
-		var otherBody = null;
-		if(bodyA == game.lfoot.body || bodyA == game.rfoot.body) {
-			footBody = bodyA;
-			otherBody = bodyB;
-		} else if(bodyB == game.lfoot.body || bodyB == game.rfoot.body) {
-			footBody = bodyB;
-			otherBody = bodyA;
+			mousetime = null;
+			curfoot = null;
 		}
 
-		var alreadySquashed = false;
-		for(var i = 0; i < game.squashList.length; i++) {
-			if(game.squashList[i].entity.body == otherBody) {
-				alreadySquashed = true;
+		if (accumulator >= physStep*1000) {
+			world.Step(physStep, 3, 3);
+			accumulator -= physStep*1000;
+		}
+
+		world.ClearForces();
+	}
+
+	var update = function(delta) {
+		lfoot.update();
+		rfoot.update();
+
+		//Iterate in reverse to avoid problems when removing elements
+		for(var i = squashList.length-1; i >= 0; --i) {
+			var squashEntity = squashList[i];
+			var entity = squashEntity.entity;
+			var foot = squashEntity.foot;
+			world.DestroyBody(entity.body);
+			delete entities[entity.id];
+
+			var distance = foot.Distance(renderer.stage.stageHeight - fHeight);
+			var scale = distance / entity.height;
+			console.log(scale);
+			if(distance < 1) {
+				var squashid = i;
+				setTimeout(function() {
+					renderer.remove(entity.drawable);
+				}, 2000);
+				squashList.splice(squashid, 1);
+			} else {
+				entity.drawable.y = renderer.stage.stageHeight - fHeight - entity.height * scale / 2.0;
+				entity.drawable.sprite.scaleY = scale;
 			}
 		}
 
-		if(!alreadySquashed) {
-			game.squashList.push({entity:otherBody.GetUserData(),
-				foot:footBody.GetUserData(),
-				squashed:false});
+		for(var i in entities) {
+			var drawable = entities[i].drawable;
+			var body = entities[i].body;
+
+			drawable.syncWithPhys(body);
+		}
+
+		renderer.view.x += scrollPixelsPerSecond * delta/1000.0;
+		renderer.update();
+	}
+
+	var onEF = function() {
+		//Even if the game is paused, we still want to keep time so
+		// there's not a huge jump after unpause
+		var curtime = Util.getTimestamp();
+		var delta = curtime - time;
+		time = curtime;
+
+		if(curtime - lastRandomBox >= nextRandomBox) {
+			lastRandomBox = curtime;
+			nextRandomBox = Util.random(randomBoxMin, randomBoxMax);
+			randomBox(renderer.view.x + renderer.stage.stageWidth / 2.0,
+					renderer.stage.stageHeight - fHeight);
+		}
+
+		stepPhysics(delta);
+		update(delta);
+		updateFloor();
+		//world.DrawDebugData();
+		
+	}
+
+	contactListener.BeginContact = function(contact) {
+		var fixtureA = contact.GetFixtureA();
+		var fixtureB = contact.GetFixtureB();
+		var bodyA = fixtureA.GetBody();
+		var bodyB = fixtureB.GetBody();
+
+		if((bodyA == lfoot.body || bodyB == lfoot.body) &&
+				(bodyA == floor.body || bodyB == floor.body)) {
+			//lfoot-ground collision
+			lfoot.onground = true;
+		} else if((bodyA == rfoot.body || bodyB == rfoot.body) &&
+				(bodyA == floor.body || bodyB == floor.body)) {
+			//rfoot-ground collision
+			rfoot.onground = true;
+		} else if(bodyA == lfoot.body || bodyB == lfoot.body ||
+				bodyA == rfoot.body || bodyB == rfoot.body) {
+			//foot-something-else collision
+			var footBody = null;
+			var otherBody = null;
+			if(bodyA == lfoot.body || bodyA == rfoot.body) {
+				footBody = bodyA;
+				otherBody = bodyB;
+			} else if(bodyB == lfoot.body || bodyB == rfoot.body) {
+				footBody = bodyB;
+				otherBody = bodyA;
+			}
+
+			var alreadySquashed = false;
+			for(var i = 0; i < squashList.length; i++) {
+				if(squashList[i].entity.body == otherBody) {
+					alreadySquashed = true;
+				}
+			}
+
+			if(!alreadySquashed) {
+				squashList.push({entity:otherBody.GetUserData(),
+					foot:footBody.GetUserData(),
+					squashed:false});
+			}
 		}
 	}
-}
 
-game.contactListener.EndContact = function(contact) {
-	var fixtureA = contact.GetFixtureA();
-	var fixtureB = contact.GetFixtureB();
-	var bodyA = fixtureA.GetBody();
-	var bodyB = fixtureB.GetBody();
+	contactListener.EndContact = function(contact) {
+		var fixtureA = contact.GetFixtureA();
+		var fixtureB = contact.GetFixtureB();
+		var bodyA = fixtureA.GetBody();
+		var bodyB = fixtureB.GetBody();
 
-	if(bodyA == game.lfoot.body || bodyB == game.lfoot.body &&
-			(bodyA == game.floor.body || bodyB == game.floor.body)) {
-		game.lfoot.onground = false;
-	}
-	if(bodyA == game.rfoot.body || bodyB == game.rfoot.body &&
-			(bodyA == game.floor.body || bodyB == game.floor.body)) {
-		game.rfoot.onground = false;
+		if(bodyA == lfoot.body || bodyB == lfoot.body &&
+				(bodyA == floor.body || bodyB == floor.body)) {
+			lfoot.onground = false;
+		}
+		if(bodyA == rfoot.body || bodyB == rfoot.body &&
+				(bodyA == floor.body || bodyB == floor.body)) {
+			rfoot.onground = false;
+		}
 	}
 }
