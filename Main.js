@@ -29,13 +29,14 @@ function Game() {
 	var fWidth = null;
 	var fHeight = null;
 
-	const randomBoxMin = 1000;
-	const randomBoxMax = 5000;
+	const randomBoxMin = 3;
+	const randomBoxMax = 10;
 	const scrollPixelsPerSecond = 50.0;
 	var nextRandomBox = Util.random(randomBoxMin, randomBoxMax);
-	var lastRandomBox = Util.getTimestamp();
+	var lastRandomBox = 0;
 
 	var time = Util.getTimestamp();
+	var distance = 0;
 	var accumulator = 0;
 
 	var physStep = 1/40.0;
@@ -295,9 +296,10 @@ function Game() {
 		var curtime = Util.getTimestamp();
 		var delta = curtime - time;
 		time = curtime;
+		distance += delta/1000.0 * scrollPixelsPerSecond / Util.meterToPixel;
 
-		if(curtime - lastRandomBox >= nextRandomBox) {
-			lastRandomBox = curtime;
+		if(distance - lastRandomBox >= nextRandomBox) {
+			lastRandomBox = distance;
 			nextRandomBox = Util.random(randomBoxMin, randomBoxMax);
 			randomBox(renderer.view.x + renderer.stage.stageWidth / 2.0,
 					renderer.stage.stageHeight - fHeight);
