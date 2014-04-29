@@ -62,7 +62,7 @@ function Game() {
 
 		initIvanK();
 		//initDebugDraw();
-		//initWorld();
+		initWorld();
 
 		intro.init(renderer.stage);
 	}
@@ -71,7 +71,7 @@ function Game() {
 		renderer = new Renderer("c");
 
 		renderer.stage.addEventListener(Event.ENTER_FRAME, function() { onEF(); }, false);
-		//renderer.stage.addEventListener(MouseEvent.MOUSE_DOWN, function(e) { onMouseDown(e); }, false);
+		renderer.stage.addEventListener(MouseEvent.MOUSE_DOWN, function(e) { onMouseDown(e); }, false);
 		renderer.stage.addEventListener(KeyboardEvent.KEY_DOWN, function(e) { onKD(e); }, false);
 		renderer.stage.addEventListener(KeyboardEvent.KEY_UP, function(e) { onKU(e); }, false);
 	}
@@ -178,9 +178,16 @@ function Game() {
 	}
 
 	var onKD = function(e) {
+		if(state == GameState.INTRO) {
+			state = GameState.GAME;
+			intro.remove(renderer.stage);
+		}
 	}
 
 	var onKU = function(e) {
+	}
+	
+	var onFootClick = function(e) {
 	}
 
 	var onMouseDown = function(e) {
