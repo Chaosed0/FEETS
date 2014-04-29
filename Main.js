@@ -15,6 +15,12 @@ b2DebugDraw 		= Box2D.Dynamics.b2DebugDraw;
 b2ContactListener	= Box2D.Dynamics.b2ContactListener;
 
 function Game() {
+
+	var GameState = {
+		INTRO: 0,
+		GAME: 1
+	}
+
 	var world = null;
 	var renderer = null;
 
@@ -47,20 +53,25 @@ function Game() {
 
 	var contactListener = new b2ContactListener();
 
+	var intro = new Intro();
+	var state = GameState.INTRO;
+
 	this.Run = function() {
 		world = new b2World(new b2Vec2(0,9.8), false);
 		world.SetContactListener(contactListener);
 
 		initIvanK();
 		//initDebugDraw();
-		initWorld();
+		//initWorld();
+
+		intro.init(renderer.stage);
 	}
 
 	var initIvanK = function() {
 		renderer = new Renderer("c");
 
 		renderer.stage.addEventListener(Event.ENTER_FRAME, function() { onEF(); }, false);
-		renderer.stage.addEventListener(MouseEvent.MOUSE_DOWN, function(e) { onMouseDown(e); }, false);
+		//renderer.stage.addEventListener(MouseEvent.MOUSE_DOWN, function(e) { onMouseDown(e); }, false);
 		renderer.stage.addEventListener(KeyboardEvent.KEY_DOWN, function(e) { onKD(e); }, false);
 		renderer.stage.addEventListener(KeyboardEvent.KEY_UP, function(e) { onKU(e); }, false);
 	}
@@ -302,20 +313,27 @@ function Game() {
 		var curtime = Util.getTimestamp();
 		var delta = curtime - time;
 		time = curtime;
-		distance += delta/1000.0 * scrollPixelsPerSecond / Util.meterToPixel;
 
-		if(distance - lastRandomBox >= nextRandomBox) {
-			lastRandomBox = distance;
-			nextRandomBox = Util.random(randomBoxMin, randomBoxMax);
-			randomBox(renderer.view.x + renderer.stage.stageWidth / 2.0,
-					renderer.stage.stageHeight - fHeight);
+		if(state == GameState.INTRO) {
+			intro.update(delta);
+		} else if(state == GameState.GAME) {
+
+			distance += delta/1000.0 * scrollPixelsPerSecond / Util.meterToPixel;
+
+			if(distance - lastRandomBox >= nextRandomBox) {
+				lastRandomBox = distance;
+				nextRandomBox = Util.random(randomBoxMin, randomBoxMax);
+				randomBox(renderer.view.x + renderer.stage.stageWidth / 2.0,
+						renderer.stage.stageHeight - fHeight);
+			}
+
+			stepPhysics(delta);
+			update(delta);
+			updateFloor();
+			//world.DrawDebugData();
+		} else {
+			console.log("UHHHH: Unknown state " + state);
 		}
-
-		stepPhysics(delta);
-		update(delta);
-		updateFloor();
-		//world.DrawDebugData();
-		
 	}
 
 	contactListener.BeginContact = function(contact) {
